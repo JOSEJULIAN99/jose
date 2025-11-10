@@ -24,25 +24,28 @@ app.use(express.json({ limit: '1mb' }));
 
 // CORS controlado por variable
 const rawOrigins = process.env.CORS_ORIGINS || '';
-const allowed = rawOrigins
-  .split(',')
-  .map((s) => s.trim())
-  .filter(Boolean);
+const allowed = rawOrigins.split(',').map(s => s.trim()).filter(Boolean);
 
-app.use(
-  cors({
-    origin: (origin, cb) => {
-      // Postman, curl, móvil en local
-      if (!origin) return cb(null, true);
-      if (allowed.length === 0 || allowed.includes(origin)) {
-        return cb(null, true);
-      }
-      // si no está permitido, devolvemos error y lo recogerá el handler de abajo
-      return cb(new Error('Origen no permitido por CORS: ' + origin));
-    },
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+
+    // Permitir coincidencia parcial o dominios *.netlify.app
+    const isAllowed =
+      allowed.includes(origin) ||
+      origin.endsWith('.netlify.app') ||
+      origin.includes('localhost');
+
+    if (isAllowed) {
+      return callback(null, true);
+    }
+
+    console.error('[ERROR] Origen no permitido por CORS:', origin);
+    return callback(new Error('CORS bloqueado: ' + origin));
+  },
+  credentials: true,
+}));
+
 
 // Logs
 app.use(morgan('dev'));
